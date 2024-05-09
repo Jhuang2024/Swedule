@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swedule</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f7f7f7;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: #fff;
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        h1 {
+            margin: 0;
+        }
+
+        #input-section {
+            margin-bottom: 20px;
+        }
+
+        #input-section h2 {
+            margin-top: 0;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        input[type="time"],
+        select,
+        button {
+            margin-right: 10px;
+            margin-bottom: 10px;
+            padding: 8px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background-color: #333;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #555;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .calendar-header {
+            text-align: center;
+            background-color: #f0f0f0;
+            padding: 10px;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+
+        .calendar-week {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .calendar-day {
+            border: 1px solid #ccc;
+            padding: 10px;
+            min-height: 100px;
+            position: relative;
+        }
+
+        .event {
+            padding: 5px;
+            margin-bottom: 2px;
+            border-radius: 3px;
+            font-size: 14px;
+            background-color: #f0f0f0;
+        }
+
+        .event-name {
+            font-weight: bold;
+        }
+
+        .edit-btn,
+        .remove-btn {
+            margin-left: 5px;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 3px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .edit-btn {
+            background-color: #3e88c6;
+            color: #fff;
+        }
+
+        .remove-btn {
+            background-color: #d9534f;
+            color: #fff;
+        }
+
+        .edit-btn:hover,
+        .remove-btn:hover {
+            opacity: 0.8;
+        }
+
+        /* Event Type Colors */
+        .practice { background-color: #87ceeb; }
+        .meet { background-color: #ffa07a; }
+        .assessment { background-color: #ff69b4; }
+        .assignment { background-color: #ffd700; }
+        .class { background-color: #90ee90; }
+
+        /* Bold Swimming Related Event Types */
+        .swim-related {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Welcome to Swedule, <span id="username">User</span>!</h1>
+    </header>
+    <section id="input-section">
+        <h2>Add Event</h2>
+        <input type="text" id="event-name" placeholder="Event Name">
+        <input type="date" id="event-date" min="" onchange="setMinDate()">
+        <input type="time" id="event-time">
+        <select id="event-type">
+            <option value="practice" class="practice">Swim Practice</option>
+            <option value="meet" class="meet swim-related">Swim Meet</option>
+            <option value="assessment" class="assessment">Assessment</option>
+            <option value="assignment" class="assignment">Assignment</option>
+            <option value="class" class="class">Class</option>
+        </select>
+        <button onclick="addEvent()">Add Event</button>
+    </section>
+
+    <div class="calendar-week">
+        <h2>Week Of: <span id="week-start-date"></span></h2>
+    </div>
+
+    <div class="calendar">
+        <div class="calendar-header">Monday</div>
+        <div class="calendar-header">Tuesday</div>
+        <div class="calendar-header">Wednesday</div>
+        <div class="calendar-header">Thursday</div>
+        <div class="calendar-header">Friday</div>
+        <div class="calendar-header">Saturday</div>
+        <div class="calendar-header">Sunday</div>
+        
+        <div class="calendar-day"></div>
+        <div class="calendar-day"></div>
+        <div class="calendar-day"></div>
+        <div class="calendar-day"></div>
+        <div class="calendar-day"></div>
+        <div class="calendar-day"></div>
+        <div class="calendar-day"></div>
+    </div>
+
+    <script>
+        var eventsByDay = [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+        ];
+
+        function setMinDate() {
+            var mondayOfWeek = getMondayOfWeek(new Date());
+            document.getElementById("event-date").min = mondayOfWeek.toISOString().split('T')[0];
+        }
+
+        function addEvent() {
+            var eventName = document.getElementById("event-name").value;
+            var eventDate = new Date(document.getElementById("event-date").value);
+            var eventTime = document.getElementById("event-time").value;
+            var eventType = document.getElementById("event-type").value;
+
+            if (eventName === "" || isNaN(eventDate.getTime()) || eventTime === "") {
+                alert("Please fill out all fields with valid data.");
+                return;
+            }
+
+            var dayIndex = eventDate.getDay();
+            var formattedTime = new Date('1970-01-01T' + eventTime);
+
+            var eventDiv = document.createElement("div");
+            eventDiv.className = "event " + eventType;
+            eventDiv.innerHTML = `<span class="event-name">${eventName} - ${formattedTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                  <button class="edit-btn" onclick="editEvent(${dayIndex}, ${eventsByDay[dayIndex].length})">Edit</button>
+                                  <button class="remove-btn" onclick="removeEvent(${dayIndex}, ${eventsByDay[dayIndex].length})">Remove</button>`;
+
+            eventsByDay[dayIndex].push({ time: formattedTime, eventDiv: eventDiv });
+
+            eventsByDay[dayIndex].sort(function(a, b) {
+                return a.time - b.time;
+            });
+
+            updateCalendar();
+
+            document.getElementById("event-name").value = "";
+            document.getElementById("event-date").value = "";
+            document.getElementById("event-time").value = "";
+        }
+
+        function editEvent(dayIndex, eventIndex) {
+            var newEventName = prompt("Enter new event name:");
+            var newEventTime = prompt("Enter new event time (HH:MM):");
+
+            if (newEventName !== null && newEventTime !== null) {
+                var formattedTime = new Date('1970-01-01T' + newEventTime);
+                eventsByDay[dayIndex][eventIndex].time = formattedTime;
+                eventsByDay[dayIndex][eventIndex].eventDiv.querySelector('.event-name').textContent = newEventName + " - " + formattedTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                updateCalendar();
+            }
+        }
+
+        function removeEvent(dayIndex, eventIndex) {
+            eventsByDay[dayIndex].splice(eventIndex, 1);
+            updateCalendar();
+        }
+
+        function updateCalendar() {
+            var dayCells = document.querySelectorAll('.calendar-day');
+            dayCells.forEach(function(dayCell, index) {
+                dayCell.innerHTML = "";
+                eventsByDay[index].forEach(function(eventObj) {
+                    dayCell.appendChild(eventObj.eventDiv);
+                });
+            });
+        }
+
+        function getMondayOfWeek(date) {
+            var day = date.getDay() || 7;
+            if (day !== 1) 
+                date.setHours(-24 * (day - 1)); 
+            return date;
+        }
+
+        var mondayOfWeek = getMondayOfWeek(new Date());
+        document.getElementById("week-start-date").textContent = mondayOfWeek.toDateString();
+        setMinDate();
+
+        var username = prompt("Please enter your name:");
+        if (username !== null && username !== "") {
+            document.getElementById("username").textContent = username;
+        }
+    </script>
+</body>
+</html>
