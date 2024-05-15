@@ -25,6 +25,10 @@
 
         #input-section {
             margin-bottom: 20px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
         #input-section h2 {
@@ -45,24 +49,27 @@
         }
 
         button {
-            background-color: #333;
+            background-color: #4CAF50;
             color: #fff;
             cursor: pointer;
+            transition: background-color 0.3s ease;
         }
 
         button:hover {
-            background-color: #555;
+            background-color: #45a049;
         }
 
         .calendar {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 5px;
+            margin-bottom: 20px;
         }
 
         .calendar-header {
             text-align: center;
-            background-color: #f0f0f0;
+            background-color: #4CAF50;
+            color: #fff;
             padding: 10px;
             font-weight: bold;
             border-radius: 5px;
@@ -77,7 +84,9 @@
             border: 1px solid #ccc;
             padding: 10px;
             min-height: 100px;
-            position: relative;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
         }
 
         .event {
@@ -100,6 +109,7 @@
             border-radius: 3px;
             border: none;
             cursor: pointer;
+            transition: opacity 0.3s ease;
         }
 
         .edit-btn {
@@ -117,27 +127,48 @@
             opacity: 0.8;
         }
 
-        /* Event Type Colors */
         .practice { background-color: #87ceeb; }
         .meet { background-color: #ffa07a; }
         .assessment { background-color: #ff69b4; }
         .assignment { background-color: #ffd700; }
         .class { background-color: #90ee90; }
 
-        /* Bold Swimming Related Event Types */
         .swim-related {
             font-weight: bold;
         }
+
+        .view-toggle {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .view-toggle button {
+            margin: 0 10px;
+        }
+
+        .notification {
+            background-color: #f44336;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            display: none;
+        }
+
     </style>
 </head>
 <body>
     <header>
         <h1>Welcome to Swedule, <span id="username">User</span>!</h1>
     </header>
+
+    <div class="notification" id="notification"></div>
+
     <section id="input-section">
         <h2>Add Event</h2>
         <input type="text" id="event-name" placeholder="Event Name">
-        <input type="date" id="event-date" min="" onchange="setMinDate()">
+        <input type="date" id="event-date" min="">
         <input type="time" id="event-time">
         <select id="event-type">
             <option value="practice" class="practice">Swim Practice</option>
@@ -149,69 +180,86 @@
         <button onclick="addEvent()">Add Event</button>
     </section>
 
-    <div class="calendar-week">
-        <h2>Week Of: <span id="week-start-date"></span></h2>
+    <div class="view-toggle">
+        <button onclick="showWeekView()">Week View</button>
+        <button onclick="showDayView()">Day View</button>
+        <button onclick="showMonthView()">Month View</button>
     </div>
 
-    <div class="calendar">
-        <div class="calendar-header">Monday</div>
-        <div class="calendar-header">Tuesday</div>
-        <div class="calendar-header">Wednesday</div>
-        <div class="calendar-header">Thursday</div>
-        <div class="calendar-header">Friday</div>
-        <div class="calendar-header">Saturday</div>
-        <div class="calendar-header">Sunday</div>
-        
-        <div class="calendar-day"></div>
-        <div class="calendar-day"></div>
-        <div class="calendar-day"></div>
-        <div class="calendar-day"></div>
-        <div class="calendar-day"></div>
-        <div class="calendar-day"></div>
-        <div class="calendar-day"></div>
+    <div class="calendar-week" id="week-view">
+        <h2>Week Of: <span id="week-start-date"></span></h2>
+        <div class="calendar">
+            <div class="calendar-header">Monday</div>
+            <div class="calendar-header">Tuesday</div>
+            <div class="calendar-header">Wednesday</div>
+            <div class="calendar-header">Thursday</div>
+            <div class="calendar-header">Friday</div>
+            <div class="calendar-header">Saturday</div>
+            <div class="calendar-header">Sunday</div>
+            
+            <div class="calendar-day monday"></div>
+            <div class="calendar-day tuesday"></div>
+            <div class="calendar-day wednesday"></div>
+            <div class="calendar-day thursday"></div>
+            <div class="calendar-day friday"></div>
+            <div class="calendar-day saturday"></div>
+            <div class="calendar-day sunday"></div>
+        </div>
+    </div>
+
+    <div class="calendar-week" id="day-view" style="display:none;">
+        <h2>Day: <span id="selected-date"></span></h2>
+        <div class="calendar">
+            <div class="calendar-header">Events</div>
+            <div class="calendar-day" id="day-events"></div>
+        </div>
+    </div>
+
+    <div class="calendar-week" id="month-view" style="display:none;">
+        <h2>Month: <span id="month-start-date"></span></h2>
+        <div class="calendar" id="month-calendar">
+            <div class="calendar-header">Sunday</div>
+            <div class="calendar-header">Monday</div>
+            <div class="calendar-header">Tuesday</div>
+            <div class="calendar-header">Wednesday</div>
+            <div class="calendar-header">Thursday</div>
+            <div class="calendar-header">Friday</div>
+            <div class="calendar-header">Saturday</div>
+        </div>
     </div>
 
     <script>
-        var eventsByDay = [
-            [],
-            [],
-            [],
-            [],
-            [],
-            [],
-            []
-        ];
+        const eventsByDay = [[], [], [], [], [], [], []];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            setMinDate();
+            showWeekView();
+        });
 
         function setMinDate() {
-            var mondayOfWeek = getMondayOfWeek(new Date());
+            const mondayOfWeek = getMondayOfWeek(new Date());
             document.getElementById("event-date").min = mondayOfWeek.toISOString().split('T')[0];
         }
 
         function addEvent() {
-            var eventName = document.getElementById("event-name").value;
-            var eventDate = new Date(document.getElementById("event-date").value);
-            var eventTime = document.getElementById("event-time").value;
-            var eventType = document.getElementById("event-type").value;
+            const eventName = document.getElementById("event-name").value;
+            const eventDate = new Date(document.getElementById("event-date").value);
+            const eventTime = document.getElementById("event-time").value;
+            const eventType = document.getElementById("event-type").value;
 
-            if (eventName === "" || isNaN(eventDate.getTime()) || eventTime === "") {
-                alert("Please fill out all fields with valid data.");
+            if (!eventName || isNaN(eventDate.getTime()) || !eventTime) {
+                showNotification("Please fill out all fields with valid data.");
                 return;
             }
 
-            var dayIndex = eventDate.getDay();
-            var formattedTime = new Date('1970-01-01T' + eventTime);
+            const dayIndex = eventDate.getDay();
+            const formattedTime = new Date(`1970-01-01T${eventTime}`);
 
-            var eventDiv = document.createElement("div");
-            eventDiv.className = "event " + eventType;
-            eventDiv.innerHTML = `<span class="event-name">${eventName} - ${formattedTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                  <button class="edit-btn" onclick="editEvent(${dayIndex}, ${eventsByDay[dayIndex].length})">Edit</button>
-                                  <button class="remove-btn" onclick="removeEvent(${dayIndex}, ${eventsByDay[dayIndex].length})">Remove</button>`;
+            const eventDiv = createEventDiv(eventName, formattedTime, eventType, dayIndex, eventsByDay[dayIndex].length);
 
-            eventsByDay[dayIndex].push({ time: formattedTime, eventDiv: eventDiv });
+            eventsByDay[dayIndex].push({ name: eventName, time: formattedTime, type: eventType, eventDiv });
 
-            eventsByDay[dayIndex].sort(function(a, b) {
-                return a.time - b.time;
-            });
+            eventsByDay[dayIndex].sort((a, b) => a.time - b.time);
 
             updateCalendar();
 
@@ -220,15 +268,29 @@
             document.getElementById("event-time").value = "";
         }
 
-        function editEvent(dayIndex, eventIndex) {
-            var newEventName = prompt("Enter new event name:");
-            var newEventTime = prompt("Enter new event time (HH:MM):");
+        function createEventDiv(name, time, type, dayIndex, eventIndex) {
+            const eventDiv = document.createElement("div");
+            eventDiv.className = `event ${type}`;
+            eventDiv.innerHTML = `
+                <span class="event-name">${name} - ${time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <button class="edit-btn" onclick="editEvent(${dayIndex}, ${eventIndex})">Edit</button>
+                <button class="remove-btn" onclick="removeEvent(${dayIndex}, ${eventIndex})">Remove</button>
+            `;
+            return eventDiv;
+        }
 
-            if (newEventName !== null && newEventTime !== null) {
-                var formattedTime = new Date('1970-01-01T' + newEventTime);
+        function editEvent(dayIndex, eventIndex) {
+            const newEventName = prompt("Enter new event name:");
+            const newEventTime = prompt("Enter new event time (HH:MM):");
+
+            if (newEventName && newEventTime) {
+                const formattedTime = new Date(`1970-01-01T${newEventTime}`);
+                eventsByDay[dayIndex][eventIndex].name = newEventName;
                 eventsByDay[dayIndex][eventIndex].time = formattedTime;
-                eventsByDay[dayIndex][eventIndex].eventDiv.querySelector('.event-name').textContent = newEventName + " - " + formattedTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                eventsByDay[dayIndex][eventIndex].eventDiv.querySelector('.event-name').textContent = `${newEventName} - ${formattedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
                 updateCalendar();
+            } else {
+                showNotification("Invalid event name or time.");
             }
         }
 
@@ -238,29 +300,116 @@
         }
 
         function updateCalendar() {
-            var dayCells = document.querySelectorAll('.calendar-day');
-            dayCells.forEach(function(dayCell, index) {
+            const dayCells = document.querySelectorAll('.calendar-day');
+            dayCells.forEach((dayCell, index) => {
                 dayCell.innerHTML = "";
-                eventsByDay[index].forEach(function(eventObj) {
+                eventsByDay[index].forEach(eventObj => {
                     dayCell.appendChild(eventObj.eventDiv);
                 });
             });
+
+            updateDayView();
+            updateMonthView();
         }
 
         function getMondayOfWeek(date) {
-            var day = date.getDay() || 7;
-            if (day !== 1) 
-                date.setHours(-24 * (day - 1)); 
+            const day = date.getDay() || 7;
+            if (day !== 1) {
+                date.setHours(-24 * (day - 1));
+            }
             return date;
         }
 
-        var mondayOfWeek = getMondayOfWeek(new Date());
-        document.getElementById("week-start-date").textContent = mondayOfWeek.toDateString();
-        setMinDate();
+        document.getElementById("week-start-date").textContent = getMondayOfWeek(new Date()).toDateString();
 
-        var username = prompt("Please enter your name:");
-        if (username !== null && username !== "") {
-            document.getElementById("username").textContent = username;
+        function setUsername() {
+            const username = document.getElementById("username-input").value;
+            if (username.trim()) {
+                document.getElementById("username").textContent = username;
+            }
+        }
+
+        const usernameInput = document.createElement("input");
+        usernameInput.type = "text";
+        usernameInput.id = "username-input";
+        usernameInput.placeholder = "Enter your name";
+        usernameInput.style.marginRight = "10px";
+        document.getElementById("input-section").appendChild(usernameInput);
+
+        const submitUsernameBtn = document.createElement("button");
+        submitUsernameBtn.textContent = "Submit";
+        submitUsernameBtn.onclick = setUsername;
+        document.getElementById("input-section").appendChild(submitUsernameBtn);
+
+        function showWeekView() {
+            document.getElementById('week-view').style.display = 'block';
+            document.getElementById('day-view').style.display = 'none';
+            document.getElementById('month-view').style.display = 'none';
+        }
+
+        function showDayView() {
+            const date = new Date();
+            document.getElementById('selected-date').textContent = date.toDateString();
+            document.getElementById('week-view').style.display = 'none';
+            document.getElementById('day-view').style.display = 'block';
+            document.getElementById('month-view').style.display = 'none';
+            updateDayView(date);
+        }
+
+        function showMonthView() {
+            document.getElementById('week-view').style.display = 'none';
+            document.getElementById('day-view').style.display = 'none';
+            document.getElementById('month-view').style.display = 'block';
+            updateMonthView();
+        }
+
+        function updateDayView(date) {
+            const dayEvents = document.getElementById('day-events');
+            dayEvents.innerHTML = '';
+            const dayIndex = date.getDay();
+            eventsByDay[dayIndex].forEach(eventObj => {
+                if (eventObj.time.toDateString() === date.toDateString()) {
+                    dayEvents.appendChild(eventObj.eventDiv.cloneNode(true));
+                }
+            });
+        }
+
+        function updateMonthView() {
+            const monthCalendar = document.getElementById('month-calendar');
+            monthCalendar.innerHTML = `
+                <div class="calendar-header">Sunday</div>
+                <div class="calendar-header">Monday</div>
+                <div class="calendar-header">Tuesday</div>
+                <div class="calendar-header">Wednesday</div>
+                <div class="calendar-header">Thursday</div>
+                <div class="calendar-header">Friday</div>
+                <div class="calendar-header">Saturday</div>
+            `;
+            const currentDate = new Date();
+            currentDate.setDate(1);
+            const startDay = currentDate.getDay();
+
+            for (let i = 0; i < startDay; i++) {
+                monthCalendar.innerHTML += '<div></div>';
+            }
+
+            while (currentDate.getMonth() === new Date().getMonth()) {
+                const dayCell = document.createElement('div');
+                dayCell.className = 'calendar-day';
+                dayCell.innerHTML = `<span>${currentDate.getDate()}</span>`;
+                monthCalendar.appendChild(dayCell);
+
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+        }
+
+        function showNotification(message) {
+            const notification = document.getElementById("notification");
+            notification.textContent = message;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
         }
     </script>
 </body>
